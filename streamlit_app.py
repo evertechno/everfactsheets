@@ -2,139 +2,141 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Sample CSV Template Data
-fund_overview = """Fund Name,Fund Type,Investment Objective,Risk Level,Fund Manager
-XYZ Growth Fund,Equity,Growth with Capital Appreciation,High,John Doe
-Inception Date,Fund Size,Base Currency,Minimum Investment
-2020-01-01,100000000,USD,10000
-"""
+# Sample Excel Template Data
 
-performance_data = """Performance Metric,1 Month,3 Months,1 Year,3 Years,5 Years,Since Inception
-Fund Return,2.5%,5.6%,12.3%,36.1%,57.8%,80.2%
-Benchmark Return,2.0%,5.1%,10.5%,30.2%,50.1%,70.4%
-"""
+# Data for different sheets in the Excel file
+fund_overview = {
+    "Fund Name": ["XYZ Growth Fund"],
+    "Fund Type": ["Equity"],
+    "Investment Objective": ["Growth with Capital Appreciation"],
+    "Risk Level": ["High"],
+    "Fund Manager": ["John Doe"],
+    "Inception Date": ["2020-01-01"],
+    "Fund Size": [100000000],
+    "Base Currency": ["USD"],
+    "Minimum Investment": [10000]
+}
 
-portfolio_composition = """Asset Class,Weight
-Equity,60%
-Fixed Income,30%
-Cash,5%
-Alternative Assets,5%
-"""
+performance_data = {
+    "Performance Metric": ["Fund Return", "Benchmark Return"],
+    "1 Month": [2.5, 2.0],
+    "3 Months": [5.6, 5.1],
+    "1 Year": [12.3, 10.5],
+    "3 Years": [36.1, 30.2],
+    "5 Years": [57.8, 50.1],
+    "Since Inception": [80.2, 70.4]
+}
 
-top_holdings = """Rank,Holding Name,Asset Class,Value (USD),Weight
-1,Company A,Equity,20000000,20%
-2,Company B,Equity,15000000,15%
-3,Treasury Bond 10Y,Fixed Income,10000000,10%
-4,Company C,Equity,8000000,8%
-5,Money Market Fund,Cash,5000000,5%
-6,Company D,Equity,4000000,4%
-7,Corporate Bond A,Fixed Income,3000000,3%
-8,Company E,Equity,2500000,2.5%
-9,Company F,Equity,2000000,2%
-10,Company G,Equity,1500000,1.5%
-"""
+portfolio_composition = {
+    "Asset Class": ["Equity", "Fixed Income", "Cash", "Alternative Assets"],
+    "Weight": [60, 30, 5, 5]
+}
 
-sector_allocation = """Sector,Weight
-Technology,25%
-Healthcare,20%
-Financials,15%
-Consumer Discretionary,10%
-Industrials,10%
-Utilities,8%
-Energy,7%
-Materials,5%
-Real Estate,3%
-"""
+top_holdings = {
+    "Rank": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "Holding Name": ["Company A", "Company B", "Treasury Bond 10Y", "Company C", "Money Market Fund", 
+                     "Company D", "Corporate Bond A", "Company E", "Company F", "Company G"],
+    "Asset Class": ["Equity", "Equity", "Fixed Income", "Equity", "Cash", "Equity", "Fixed Income", "Equity", "Equity", "Equity"],
+    "Value (USD)": [20000000, 15000000, 10000000, 8000000, 5000000, 4000000, 3000000, 2500000, 2000000, 1500000],
+    "Weight": [20, 15, 10, 8, 5, 4, 3, 2.5, 2, 1.5]
+}
 
-risk_metrics = """Risk Metric,1 Year,3 Years,5 Years
-Volatility,10%,12%,14%
-Sharpe Ratio,1.2,1.3,1.5
-Max Drawdown,-15%,-20%,-18%
-"""
+sector_allocation = {
+    "Sector": ["Technology", "Healthcare", "Financials", "Consumer Discretionary", "Industrials", 
+               "Utilities", "Energy", "Materials", "Real Estate"],
+    "Weight": [25, 20, 15, 10, 10, 8, 7, 5, 3]
+}
 
-fund_manager_commentary = """Fund Manager Commentary
-"The fund performed well during the period, outperforming the benchmark. We are overweight in technology stocks, and expect continued growth in the sector."
-"""
+risk_metrics = {
+    "Risk Metric": ["Volatility", "Sharpe Ratio", "Max Drawdown"],
+    "1 Year": [10, 1.2, -15],
+    "3 Years": [12, 1.3, -20],
+    "5 Years": [14, 1.5, -18]
+}
 
-# Function to generate CSV template
-def generate_csv_template():
-    # Combine all sections into one CSV template
-    full_template = (
-        "# Fund Overview\n" + fund_overview + "\n\n" +
-        "# Performance Data\n" + performance_data + "\n\n" +
-        "# Portfolio Composition\n" + portfolio_composition + "\n\n" +
-        "# Top 10 Holdings\n" + top_holdings + "\n\n" +
-        "# Sector Allocation\n" + sector_allocation + "\n\n" +
-        "# Risk Metrics\n" + risk_metrics + "\n\n" +
-        "# Fund Manager Commentary\n" + fund_manager_commentary
-    )
-    
-    # Convert to byte stream for download
-    return io.BytesIO(full_template.encode())
+fund_manager_commentary = {
+    "Fund Manager Commentary": ["The fund performed well during the period, outperforming the benchmark. We are overweight in technology stocks, and expect continued growth in the sector."]
+}
+
+# Function to generate Excel template
+def generate_excel_template():
+    # Create a Pandas Excel writer using BytesIO to avoid saving it to the disk
+    output = io.BytesIO()
+
+    # Write all sheets to the Excel file
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        pd.DataFrame(fund_overview).to_excel(writer, sheet_name='Fund Overview', index=False)
+        pd.DataFrame(performance_data).to_excel(writer, sheet_name='Performance Data', index=False)
+        pd.DataFrame(portfolio_composition).to_excel(writer, sheet_name='Portfolio Composition', index=False)
+        pd.DataFrame(top_holdings).to_excel(writer, sheet_name='Top 10 Holdings', index=False)
+        pd.DataFrame(sector_allocation).to_excel(writer, sheet_name='Sector Allocation', index=False)
+        pd.DataFrame(risk_metrics).to_excel(writer, sheet_name='Risk Metrics', index=False)
+        pd.DataFrame(fund_manager_commentary).to_excel(writer, sheet_name='Fund Manager Commentary', index=False)
+
+    output.seek(0)  # Go to the beginning of the BytesIO stream
+    return output
 
 # Streamlit App
 def app():
     # Title and Instructions
     st.title("Fund Factsheet Generator")
     st.write("""
-    This application allows you to generate a fund factsheet by uploading a CSV file.
+    This application allows you to generate a fund factsheet by uploading an Excel file.
     You can also download a template to fill out and upload back to generate your factsheet.
     """)
 
     # Download Template Button
     st.download_button(
-        label="Download Fund Factsheet Template",
-        data=generate_csv_template(),
-        file_name="fund_factsheet_template.csv",
-        mime="text/csv",
+        label="Download Fund Factsheet Template (Excel)",
+        data=generate_excel_template(),
+        file_name="fund_factsheet_template.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    
+
     st.markdown("---")
 
     # File Upload Section
-    uploaded_file = st.file_uploader("Upload your CSV file for factsheet", type=["csv"])
+    uploaded_file = st.file_uploader("Upload your Excel file for factsheet", type=["xlsx"])
     
     if uploaded_file is not None:
-        # Read the uploaded CSV into a DataFrame
-        df = pd.read_csv(uploaded_file)
-        st.write("Data from the uploaded CSV:")
-        st.dataframe(df)
+        # Read the uploaded Excel file
+        excel_data = pd.read_excel(uploaded_file, sheet_name=None)  # Read all sheets
+
+        st.write("Data from the uploaded Excel:")
         
-        # Displaying specific sections if available
-        if "# Fund Overview" in df.to_string():
+        # Display all sheets in the uploaded file
+        for sheet_name, sheet_data in excel_data.items():
+            st.write(f"### {sheet_name}")
+            st.dataframe(sheet_data)
+
+        # Example: Displaying sections based on sheet names
+        if 'Fund Overview' in excel_data:
             st.header("Fund Overview")
-            fund_overview_df = df[df["Fund Name"].notna()]
-            st.write(fund_overview_df)
+            st.write(excel_data['Fund Overview'])
 
-        if "# Performance Data" in df.to_string():
+        if 'Performance Data' in excel_data:
             st.header("Performance Data")
-            performance_df = df[df["Performance Metric"].notna()]
-            st.write(performance_df)
+            st.write(excel_data['Performance Data'])
 
-        if "# Portfolio Composition" in df.to_string():
+        if 'Portfolio Composition' in excel_data:
             st.header("Portfolio Composition")
-            portfolio_df = df[df["Asset Class"].notna()]
-            st.write(portfolio_df)
+            st.write(excel_data['Portfolio Composition'])
 
-        if "# Top 10 Holdings" in df.to_string():
+        if 'Top 10 Holdings' in excel_data:
             st.header("Top 10 Holdings")
-            holdings_df = df[df["Rank"].notna()]
-            st.write(holdings_df)
+            st.write(excel_data['Top 10 Holdings'])
 
-        if "# Sector Allocation" in df.to_string():
+        if 'Sector Allocation' in excel_data:
             st.header("Sector Allocation")
-            sector_df = df[df["Sector"].notna()]
-            st.write(sector_df)
+            st.write(excel_data['Sector Allocation'])
 
-        if "# Risk Metrics" in df.to_string():
+        if 'Risk Metrics' in excel_data:
             st.header("Risk Metrics")
-            risk_df = df[df["Risk Metric"].notna()]
-            st.write(risk_df)
+            st.write(excel_data['Risk Metrics'])
 
-        if "# Fund Manager Commentary" in df.to_string():
+        if 'Fund Manager Commentary' in excel_data:
             st.header("Fund Manager Commentary")
-            commentary_df = df[df["Fund Manager Commentary"].notna()]
-            st.write(commentary_df)
+            st.write(excel_data['Fund Manager Commentary'])
 
 if __name__ == "__main__":
     app()
