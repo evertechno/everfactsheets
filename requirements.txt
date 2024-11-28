@@ -4,3 +4,4 @@ matplotlib
 xlsxwriter
 openpyxl
 seaborn 
+weasyprint
