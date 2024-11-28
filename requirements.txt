@@ -4,4 +4,4 @@ matplotlib
 xlsxwriter
 openpyxl
 seaborn 
-weasyprint
+reportlab
