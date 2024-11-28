@@ -2,9 +2,10 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import io
-import weasyprint
 from io import BytesIO
+from reportlab.lib.pagesizes import letter
+from reportlab.lib import colors
+from reportlab.pdfgen import canvas
 import base64
 
 # Sample Data for the Fund Factsheet
@@ -82,11 +83,6 @@ def create_performance_chart():
     plt.xlabel("Time Periods")
     return fig
 
-# Generate the PDF file from HTML
-def generate_pdf(html_content):
-    pdf = weasyprint.HTML(string=html_content).write_pdf()
-    return pdf
-
 # Convert image to base64 for embedding in HTML
 def image_to_base64(image):
     img_stream = BytesIO()
@@ -95,112 +91,63 @@ def image_to_base64(image):
     img_str = base64.b64encode(img_stream.read()).decode('utf-8')
     return img_str
 
+# Function to generate PDF
+def generate_pdf():
+    # Create a new PDF
+    buffer = BytesIO()
+    c = canvas.Canvas(buffer, pagesize=letter)
+    
+    # Fund Overview Section
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, 750, "Fund Overview:")
+    y_position = 730
+    c.setFont("Helvetica", 10)
+    for key, value in fund_overview.items():
+        c.drawString(50, y_position, f"{key}: {value[0]}")
+        y_position -= 15
+
+    # Performance Data Section
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, y_position, "Performance Data:")
+    y_position -= 20
+    performance_df = pd.DataFrame(performance_data)
+    c.setFont("Helvetica", 10)
+    for i, row in performance_df.iterrows():
+        c.drawString(50, y_position, f"{row['Performance Metric']}: {row[1]:.2f}% / {row[2]:.2f}%")
+        y_position -= 15
+    
+    # Portfolio Composition Section
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, y_position, "Portfolio Composition:")
+    y_position -= 20
+    fig_portfolio = create_pie_chart(portfolio_composition['Weight'], portfolio_composition['Asset Class'], 'Portfolio Composition')
+    portfolio_img = image_to_base64(fig_portfolio)
+    c.drawImage(f"data:image/png;base64,{portfolio_img}", 50, y_position-100, width=200, height=150)
+    y_position -= 160
+
+    # Top Holdings Section
+    c.setFont("Helvetica-Bold", 12)
+    c.drawString(50, y_position, "Top 10 Holdings:")
+    y_position -= 20
+    fig_holdings = create_pie_chart(top_holdings['Weight'], top_holdings['Holding Name'], 'Top 10 Holdings')
+    top_holdings_img = image_to_base64(fig_holdings)
+    c.drawImage(f"data:image/png;base64,{top_holdings_img}", 50, y_position-100, width=200, height=150)
+    
+    # Finalize and save the PDF
+    c.save()
+    buffer.seek(0)
+    return buffer
+
 # Streamlit App
 def app():
     st.title("Fund Factsheet Generator")
 
-    # HTML Template
-    html_template = """
-    <html>
-    <head>
-        <style>
-            body {
-                font-family: Arial, sans-serif;
-                font-size: 12px;
-                margin: 0;
-                padding: 0;
-            }
-            .container {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: space-between;
-            }
-            .section {
-                width: 48%;
-                margin-bottom: 10px;
-            }
-            .header {
-                text-align: center;
-                font-size: 18px;
-                font-weight: bold;
-                margin-bottom: 20px;
-            }
-            table {
-                width: 100%;
-                border-collapse: collapse;
-                margin-bottom: 20px;
-            }
-            table, th, td {
-                border: 1px solid #ddd;
-            }
-            th, td {
-                padding: 8px;
-                text-align: left;
-            }
-            th {
-                background-color: #f2f2f2;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="section">
-                <h2 class="header">Fund Overview</h2>
-                <table>
-                    <tr><th>Fund Name</th><td>XYZ Growth Fund</td></tr>
-                    <tr><th>Fund Type</th><td>Equity</td></tr>
-                    <tr><th>Investment Objective</th><td>Growth with Capital Appreciation</td></tr>
-                    <tr><th>Risk Level</th><td>High</td></tr>
-                    <tr><th>Fund Manager</th><td>John Doe</td></tr>
-                    <tr><th>Inception Date</th><td>2020-01-01</td></tr>
-                    <tr><th>Fund Size (USD)</th><td>100,000,000</td></tr>
-                </table>
-            </div>
-            <div class="section">
-                <h2 class="header">Performance Data</h2>
-                <table>
-                    <tr><th>Metric</th><th>Fund</th><th>Benchmark</th></tr>
-                    <tr><td>1 Month</td><td>2.5%</td><td>2.0%</td></tr>
-                    <tr><td>3 Months</td><td>5.6%</td><td>5.1%</td></tr>
-                    <tr><td>1 Year</td><td>12.3%</td><td>10.5%</td></tr>
-                    <tr><td>3 Years</td><td>36.1%</td><td>30.2%</td></tr>
-                    <tr><td>5 Years</td><td>57.8%</td><td>50.1%</td></tr>
-                    <tr><td>Since Inception</td><td>80.2%</td><td>70.4%</td></tr>
-                </table>
-            </div>
-        </div>
-
-        <div class="container">
-            <div class="section">
-                <h2 class="header">Portfolio Composition</h2>
-                <img src="data:image/png;base64,{portfolio_img}" alt="Portfolio Composition" width="100%"/>
-            </div>
-            <div class="section">
-                <h2 class="header">Top 10 Holdings</h2>
-                <img src="data:image/png;base64,{top_holdings_img}" alt="Top 10 Holdings" width="100%"/>
-            </div>
-        </div>
-    </body>
-    </html>
-    """
-
-    # Create the pie chart for Portfolio Composition
-    fig_portfolio = create_pie_chart(portfolio_composition['Weight'], portfolio_composition['Asset Class'], 'Portfolio Composition')
-    portfolio_img = image_to_base64(fig_portfolio)
-
-    # Create the pie chart for Top 10 Holdings
-    fig_holdings = create_pie_chart(top_holdings['Weight'], top_holdings['Holding Name'], 'Top 10 Holdings')
-    top_holdings_img = image_to_base64(fig_holdings)
-
-    # Replace placeholders in HTML template
-    html_content = html_template.format(portfolio_img=portfolio_img, top_holdings_img=top_holdings_img)
-
     # PDF Generation Button
     if st.button("Generate PDF"):
-        pdf = generate_pdf(html_content)
+        pdf_buffer = generate_pdf()
         
-        # Create a download link for the PDF
-        pdf_base64 = base64.b64encode(pdf).decode('utf-8')
+        # Provide the generated PDF as a download link
+        pdf_base64 = base64.b64encode(pdf_buffer.read()).decode('utf-8')
         pdf_link = f'<a href="data:application/pdf;base64,{pdf_base64}" download="fund_factsheet.pdf">Download the Fund Factsheet PDF</a>'
         st.markdown(pdf_link, unsafe_allow_html=True)
 
