@@ -3,6 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
+import weasyprint
+from io import BytesIO
+import base64
 
 # Sample Data for the Fund Factsheet
 
@@ -61,7 +64,7 @@ fund_manager_commentary = {
 
 # Function to create pie chart for portfolio composition
 def create_pie_chart(data, labels, title):
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(4, 4))
     ax.pie(data, labels=labels, autopct='%1.1f%%', startangle=90, colors=sns.color_palette("Set3", len(data)))
     ax.axis('equal')  # Equal aspect ratio ensures that pie chart is drawn as a circle.
     plt.title(title)
@@ -72,96 +75,134 @@ def create_performance_chart():
     performance_df = pd.DataFrame(performance_data)
     performance_df.set_index("Performance Metric", inplace=True)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(5, 3))
     performance_df.transpose().plot(kind='line', marker='o', ax=ax)
     plt.title("Fund Performance vs Benchmark")
     plt.ylabel("Returns (%)")
     plt.xlabel("Time Periods")
     return fig
 
-# Function to generate Excel template
-def generate_excel_template():
-    # Create a Pandas Excel writer using BytesIO to avoid saving it to the disk
-    output = io.BytesIO()
+# Generate the PDF file from HTML
+def generate_pdf(html_content):
+    pdf = weasyprint.HTML(string=html_content).write_pdf()
+    return pdf
 
-    # Write all sections as separate sheets
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        pd.DataFrame(fund_overview).to_excel(writer, sheet_name='Fund Overview', index=False)
-        pd.DataFrame(performance_data).to_excel(writer, sheet_name='Performance Data', index=False)
-        pd.DataFrame(portfolio_composition).to_excel(writer, sheet_name='Portfolio Composition', index=False)
-        pd.DataFrame(top_holdings).to_excel(writer, sheet_name='Top 10 Holdings', index=False)
-        pd.DataFrame(risk_metrics).to_excel(writer, sheet_name='Risk Metrics', index=False)
-        pd.DataFrame(fund_manager_commentary).to_excel(writer, sheet_name='Fund Manager Commentary', index=False)
-
-    output.seek(0)  # Go to the beginning of the BytesIO stream
-    return output
+# Convert image to base64 for embedding in HTML
+def image_to_base64(image):
+    img_stream = BytesIO()
+    image.savefig(img_stream, format="png")
+    img_stream.seek(0)
+    img_str = base64.b64encode(img_stream.read()).decode('utf-8')
+    return img_str
 
 # Streamlit App
 def app():
-    # Title and Instructions
     st.title("Fund Factsheet Generator")
-    st.write("""
-    This application allows you to generate a fund factsheet with graphs, charts, and performance data.
-    You can download a template in Excel format, fill it out, and upload it back to generate a dynamic factsheet.
-    """)
 
-    # Download Template Button
-    st.download_button(
-        label="Download Fund Factsheet Template (Excel)",
-        data=generate_excel_template(),
-        file_name="fund_factsheet_template.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
+    # HTML Template
+    html_template = """
+    <html>
+    <head>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                font-size: 12px;
+                margin: 0;
+                padding: 0;
+            }
+            .container {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+            }
+            .section {
+                width: 48%;
+                margin-bottom: 10px;
+            }
+            .header {
+                text-align: center;
+                font-size: 18px;
+                font-weight: bold;
+                margin-bottom: 20px;
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-bottom: 20px;
+            }
+            table, th, td {
+                border: 1px solid #ddd;
+            }
+            th, td {
+                padding: 8px;
+                text-align: left;
+            }
+            th {
+                background-color: #f2f2f2;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="section">
+                <h2 class="header">Fund Overview</h2>
+                <table>
+                    <tr><th>Fund Name</th><td>XYZ Growth Fund</td></tr>
+                    <tr><th>Fund Type</th><td>Equity</td></tr>
+                    <tr><th>Investment Objective</th><td>Growth with Capital Appreciation</td></tr>
+                    <tr><th>Risk Level</th><td>High</td></tr>
+                    <tr><th>Fund Manager</th><td>John Doe</td></tr>
+                    <tr><th>Inception Date</th><td>2020-01-01</td></tr>
+                    <tr><th>Fund Size (USD)</th><td>100,000,000</td></tr>
+                </table>
+            </div>
+            <div class="section">
+                <h2 class="header">Performance Data</h2>
+                <table>
+                    <tr><th>Metric</th><th>Fund</th><th>Benchmark</th></tr>
+                    <tr><td>1 Month</td><td>2.5%</td><td>2.0%</td></tr>
+                    <tr><td>3 Months</td><td>5.6%</td><td>5.1%</td></tr>
+                    <tr><td>1 Year</td><td>12.3%</td><td>10.5%</td></tr>
+                    <tr><td>3 Years</td><td>36.1%</td><td>30.2%</td></tr>
+                    <tr><td>5 Years</td><td>57.8%</td><td>50.1%</td></tr>
+                    <tr><td>Since Inception</td><td>80.2%</td><td>70.4%</td></tr>
+                </table>
+            </div>
+        </div>
 
-    st.markdown("---")
+        <div class="container">
+            <div class="section">
+                <h2 class="header">Portfolio Composition</h2>
+                <img src="data:image/png;base64,{portfolio_img}" alt="Portfolio Composition" width="100%"/>
+            </div>
+            <div class="section">
+                <h2 class="header">Top 10 Holdings</h2>
+                <img src="data:image/png;base64,{top_holdings_img}" alt="Top 10 Holdings" width="100%"/>
+            </div>
+        </div>
+    </body>
+    </html>
+    """
 
-    # File Upload Section
-    uploaded_file = st.file_uploader("Upload your Excel file for factsheet", type=["xlsx"])
-    
-    if uploaded_file is not None:
-        # Read the uploaded Excel file
-        excel_data = pd.read_excel(uploaded_file, sheet_name=None)  # Read all sheets
+    # Create the pie chart for Portfolio Composition
+    fig_portfolio = create_pie_chart(portfolio_composition['Weight'], portfolio_composition['Asset Class'], 'Portfolio Composition')
+    portfolio_img = image_to_base64(fig_portfolio)
 
-        st.write("### Data from the uploaded Excel:")
+    # Create the pie chart for Top 10 Holdings
+    fig_holdings = create_pie_chart(top_holdings['Weight'], top_holdings['Holding Name'], 'Top 10 Holdings')
+    top_holdings_img = image_to_base64(fig_holdings)
 
-        # Display Fund Overview
-        if 'Fund Overview' in excel_data:
-            st.header("Fund Overview")
-            st.write(excel_data['Fund Overview'])
+    # Replace placeholders in HTML template
+    html_content = html_template.format(portfolio_img=portfolio_img, top_holdings_img=top_holdings_img)
 
-        # Display Performance Data
-        if 'Performance Data' in excel_data:
-            st.header("Performance Data")
-            st.write(excel_data['Performance Data'])
-
-        # Display Portfolio Composition Pie Chart
-        if 'Portfolio Composition' in excel_data:
-            st.header("Portfolio Composition")
-            portfolio_df = excel_data['Portfolio Composition']
-            fig = create_pie_chart(portfolio_df['Weight'], portfolio_df['Asset Class'], 'Portfolio Composition')
-            st.pyplot(fig)
-
-        # Display Top 10 Holdings Pie Chart
-        if 'Top 10 Holdings' in excel_data:
-            st.header("Top 10 Holdings")
-            holdings_df = excel_data['Top 10 Holdings']
-            fig = create_pie_chart(holdings_df['Weight'], holdings_df['Holding Name'], 'Top 10 Holdings')
-            st.pyplot(fig)
-
-        # Display Risk Metrics
-        if 'Risk Metrics' in excel_data:
-            st.header("Risk Metrics")
-            st.write(excel_data['Risk Metrics'])
-
-        # Display Fund Manager Commentary
-        if 'Fund Manager Commentary' in excel_data:
-            st.header("Fund Manager Commentary")
-            st.write(excel_data['Fund Manager Commentary'])
-
-        # Display Fund Performance Line Chart
-        st.header("Fund Performance")
-        fig = create_performance_chart()
-        st.pyplot(fig)
+    # PDF Generation Button
+    if st.button("Generate PDF"):
+        pdf = generate_pdf(html_content)
+        
+        # Create a download link for the PDF
+        pdf_base64 = base64.b64encode(pdf).decode('utf-8')
+        pdf_link = f'<a href="data:application/pdf;base64,{pdf_base64}" download="fund_factsheet.pdf">Download the Fund Factsheet PDF</a>'
+        st.markdown(pdf_link, unsafe_allow_html=True)
 
 if __name__ == "__main__":
     app()
