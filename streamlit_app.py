@@ -116,11 +116,11 @@ url_input = st.text_input("Enter the competitor/product website URL (Leave blank
 # Use default URL if no input is provided
 url = url_input if url_input else default_url
 
-# Initialize session state for text data
+# Initialize session state for text data and user query
 if "text_data" not in st.session_state:
     st.session_state.text_data = None
 if "user_query" not in st.session_state:
-    st.session_state.user_query = None
+    st.session_state.user_query = ""
 
 # Button to trigger scraping and analysis
 if st.button("Analyze and Suggest Improvements"):
