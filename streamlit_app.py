@@ -1,133 +1,238 @@
 import streamlit as st
 import google.generativeai as genai
-from fpdf import FPDF
-from docx import Document
-from io import BytesIO
+import requests
+from bs4 import BeautifulSoup
+import openai
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import smtplib
+from email.mime.text import MIMEText
+from textblob import TextBlob
+import json
+import os
 
 # Configure the API key securely from Streamlit's secrets
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Streamlit App UI
-st.title("AI Product/Service Factsheet Generator")
-st.write("Use AI to generate a professional factsheet for your product or service. Fill out the fields below to customize your factsheet.")
+st.title("Ever AI: Product Improvement & Beta Version Creator")
+st.write("Use generative AI, data scraping, and automation to improve your product and create beta suggestions.")
 
-# Input fields for the product/service
-product_name = st.text_input("Product/Service Name")
-description = st.text_area("Product/Service Description", height=150)
-target_audience = st.text_input("Target Audience")
-key_features = st.text_area("Key Features (separate by commas)", height=100)
-price = st.text_input("Pricing Information")
-customer_benefits = st.text_area("Customer Benefits", height=100)
-unique_selling_point = st.text_input("Unique Selling Point (USP)")
-competitors = st.text_area("Competitors (separate by commas)")
-industry = st.text_input("Industry")
-launch_date = st.date_input("Launch Date")
-contact_info = st.text_area("Contact Information", height=80)
-website = st.text_input("Website URL")
+# Feature 1: Web Data Scraping from Multiple Sources
+def scrape_website(url):
+    """ Scrape a website to collect data (e.g., reviews, comments). """
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        reviews = soup.find_all('p', class_='review-text')  # Modify according to website structure
+        review_texts = [review.get_text() for review in reviews]
+        return review_texts
+    except Exception as e:
+        st.error(f"Error scraping website: {e}")
+        return []
 
-# Additional fields for customization
-tone_of_voice = st.selectbox("Tone of Voice", ["Formal", "Casual", "Professional", "Friendly", "Technical"])
-factsheet_style = st.selectbox("Factsheet Layout", ["Minimalist", "Corporate", "Creative", "Innovative"])
-include_logo = st.checkbox("Include Logo in the Factsheet")
-include_image = st.checkbox("Include an Image")
-image_url = st.text_input("Image URL (if applicable)")
+# Feature 2: Sentiment Analysis (TextBlob)
+def sentiment_analysis(text):
+    """ Perform sentiment analysis on the given text. """
+    analysis = TextBlob(text)
+    sentiment = analysis.sentiment.polarity
+    return sentiment
 
-# Button to generate factsheet
-if st.button("Generate Factsheet"):
-    if product_name and description and target_audience and key_features:
-        try:
-            # Prepare the input prompt for the generative AI model
-            prompt = f"Generate a product/service factsheet for a product named '{product_name}'. The description is '{description}'. " \
-                     f"The target audience is '{target_audience}'. The key features are {key_features}. Pricing information: {price}. " \
-                     f"Customer benefits: {customer_benefits}. Unique selling point: {unique_selling_point}. Competitors: {competitors}. " \
-                     f"Industry: {industry}. Launch date: {launch_date}. Contact information: {contact_info}. Website: {website}. " \
-                     f"Generate with a tone of '{tone_of_voice}' and a layout style of '{factsheet_style}'."
+# Feature 3: Competitor Feature Comparison
+def competitor_feature_comparison(features):
+    """ Compare product features with competitors. """
+    prompt = f"Compare these features with current competitors: {features}"
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
 
-            # Load and configure the model
-            model = genai.GenerativeModel('gemini-1.5-flash')
-            
-            # Generate response from the model
-            response = model.generate_content(prompt)
-            factsheet_text = response.text
-            
-            # Display generated factsheet
-            st.write("Generated Factsheet:")
-            st.write(factsheet_text)
+# Feature 4: Customer Feedback Aggregation
+def aggregate_feedback(feedback_list):
+    """ Aggregate multiple feedback sources into one cohesive list. """
+    return "\n".join(feedback_list)
 
-            # Export options
-            export_options = st.radio("Export as:", ["PDF", "DOCX", "Text"])
+# Feature 5: Visualization of Feedback Trends
+def visualize_feedback_trends(feedback_data):
+    """ Visualize trends in customer feedback (e.g., sentiment). """
+    sentiments = [sentiment_analysis(fb) for fb in feedback_data]
+    df = pd.DataFrame({'Feedback': feedback_data, 'Sentiment': sentiments})
+    sns.set(style="whitegrid")
+    plt.figure(figsize=(10, 6))
+    sns.histplot(df['Sentiment'], bins=10, kde=True)
+    st.pyplot(plt)
 
-            # PDF Export
-            if export_options == "PDF":
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_font("Arial", size=12)
-                if include_logo:
-                    pdf.image('logo_path.png', 10, 8, 33)  # Add logo (provide logo path)
-                if include_image and image_url:
-                    pdf.image(image_url, x=50, w=100)  # Add an image (provide valid URL)
-                pdf.multi_cell(0, 10, factsheet_text)
-                pdf_output = "/mnt/data/factsheet.pdf"
-                pdf.output(pdf_output)
-                st.download_button("Download PDF", pdf_output)
+# Feature 6: Customizable Prompt for AI Model
+def generate_custom_response(prompt):
+    """ Generate AI responses based on user prompt. """
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
 
-            # DOCX Export
-            elif export_options == "DOCX":
-                doc = Document()
-                doc.add_heading(f"{product_name} Factsheet", 0)
-                doc.add_paragraph(factsheet_text)
-                if include_logo:
-                    doc.add_picture('logo_path.png', width=Inches(1.0))  # Add logo
-                if include_image and image_url:
-                    doc.add_picture(image_url, width=Inches(2.0))  # Add image
-                doc_output = "/mnt/data/factsheet.docx"
-                doc.save(doc_output)
-                st.download_button("Download DOCX", doc_output)
+# Feature 7: Automated Email Notifications for Beta Testing Invitations
+def send_beta_invite(email, invite_message):
+    """ Send an invitation email to beta testers. """
+    try:
+        msg = MIMEText(invite_message)
+        msg['Subject'] = 'Beta Test Invitation'
+        msg['From'] = 'youremail@example.com'
+        msg['To'] = email
+        
+        server = smtplib.SMTP('smtp.example.com', 587)
+        server.starttls()
+        server.login('youremail@example.com', 'yourpassword')
+        server.sendmail('youremail@example.com', email, msg.as_string())
+        server.quit()
+        st.success(f"Invitation sent to {email}")
+    except Exception as e:
+        st.error(f"Error sending email: {e}")
 
-            # Text Export
-            elif export_options == "Text":
-                text_output = "/mnt/data/factsheet.txt"
-                with open(text_output, "w") as f:
-                    f.write(factsheet_text)
-                st.download_button("Download Text File", text_output)
+# Feature 8: Integration with Slack for Real-Time Updates
+def send_slack_message(slack_webhook_url, message):
+    """ Send message to Slack channel. """
+    payload = {"text": message}
+    try:
+        response = requests.post(slack_webhook_url, json=payload)
+        if response.status_code == 200:
+            st.success("Message sent to Slack!")
+        else:
+            st.error("Error sending message to Slack.")
+    except Exception as e:
+        st.error(f"Error sending message to Slack: {e}")
 
-        except Exception as e:
-            st.error(f"Error: {e}")
-    else:
-        st.error("Please fill out all the fields before generating the factsheet.")
+# Feature 9: Machine Learning for Feature Prioritization
+def prioritize_features(features):
+    """ Use ML model (e.g., decision tree) to prioritize features. """
+    prompt = f"Prioritize these features based on user feedback: {features}"
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
 
-# Feature to allow users to compare different versions of factsheets
-if st.checkbox("Generate Multiple Versions for Comparison"):
-    num_versions = st.slider("Number of Versions", min_value=1, max_value=5, value=3)
-    
-    for i in range(num_versions):
-        version_prompt = f"Generate version {i+1} of the factsheet for the product '{product_name}' with the following details: {description}. " \
-                         f"Include tone of '{tone_of_voice}', layout '{factsheet_style}', and focus on these features: {key_features}. " \
-                         f"Make the factsheet different from the others."
+# Feature 10: User Profile for Personalized Feedback
+def get_user_profile(user_id):
+    """ Fetch user profile for personalized feedback. """
+    # Example: Fetch user data from a database (using user_id)
+    user_data = {"user_id": user_id, "preferences": "User likes dark mode."}
+    return user_data
 
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        version_response = model.generate_content(version_prompt)
-        st.write(f"Version {i+1} Generated Factsheet:")
-        st.write(version_response.text)
+# Feature 11: User Interface Suggestions via AI
+def ui_suggestions(feedback):
+    """ Generate user interface suggestions based on feedback. """
+    prompt = f"Based on the following feedback, suggest UI improvements: {feedback}"
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
 
-        export_version_option = st.radio(f"Export Version {i+1} as:", ["PDF", "DOCX", "Text"])
-        if export_version_option == "PDF":
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
-            pdf.multi_cell(0, 10, version_response.text)
-            pdf_output = f"/mnt/data/factsheet_version_{i+1}.pdf"
-            pdf.output(pdf_output)
-            st.download_button(f"Download Version {i+1} as PDF", pdf_output)
-        elif export_version_option == "DOCX":
-            doc = Document()
-            doc.add_heading(f"{product_name} Factsheet - Version {i+1}", 0)
-            doc.add_paragraph(version_response.text)
-            doc_output = f"/mnt/data/factsheet_version_{i+1}.docx"
-            doc.save(doc_output)
-            st.download_button(f"Download Version {i+1} as DOCX", doc_output)
-        elif export_version_option == "Text":
-            text_output = f"/mnt/data/factsheet_version_{i+1}.txt"
-            with open(text_output, "w") as f:
-                f.write(version_response.text)
-            st.download_button(f"Download Version {i+1} as Text File", text_output)
+# Feature 12: Error Log for Monitoring
+def log_error(error_message):
+    """ Log errors for debugging and monitoring purposes. """
+    with open("error_log.txt", "a") as log_file:
+        log_file.write(error_message + "\n")
+
+# Feature 13: Trending Topic Identification
+def identify_trending_topics(feedback):
+    """ Identify trending topics based on feedback data. """
+    prompt = f"Identify trending topics from the following feedback: {feedback}"
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
+
+# Feature 14: Version Control and Diff for Beta Releases
+def version_diff(current_version, new_version):
+    """ Compare differences between versions. """
+    prompt = f"Compare these two versions:\nCurrent Version: {current_version}\nNew Version: {new_version}"
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
+
+# Feature 15: Automated A/B Testing Suggestions
+def ab_testing_suggestions(current_features, new_features):
+    """ Generate A/B testing suggestions. """
+    prompt = f"Suggest A/B testing strategies for:\nCurrent Features: {current_features}\nNew Features: {new_features}"
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
+
+# Feature 16: Database Integration for Storing Scraped Data
+def store_data_in_database(data):
+    """ Store scraped data into a database (e.g., MySQL). """
+    # Assuming a database connection is established
+    pass
+
+# Feature 17: Exporting Data to CSV/Excel
+def export_data_to_csv(data):
+    """ Export data to CSV. """
+    df = pd.DataFrame(data)
+    df.to_csv("scraped_data.csv", index=False)
+    st.download_button("Download Data", data="scraped_data.csv", file_name="scraped_data.csv")
+
+# Feature 18: Product Roadmap Generation
+def generate_roadmap(improvements):
+    """ Generate product roadmap based on suggested improvements. """
+    prompt = f"Create a product roadmap based on these improvements: {improvements}"
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
+
+# Feature 19: Pricing Model Optimization
+def pricing_model_optimization(pricing_feedback):
+    """ Optimize pricing model based on customer feedback. """
+    prompt = f"Optimize pricing model based on this feedback: {pricing_feedback}"
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
+
+# Feature 20: Customizable UI Elements (Theme/Colors)
+def customize_ui(theme, colors):
+    """ Customize UI based on user preferences. """
+    st.markdown(f"<style>body {{background-color: {colors['background']}; color: {colors['text']};}}</style>", unsafe_allow_html=True)
+
+# Feature 21: Content Moderation
+def moderate_content(content):
+    """ Moderate user-generated content for inappropriate language. """
+    # Example: Use AI or regex for moderation
+    pass
+
+# Feature 22: AI-Generated FAQs for Beta Testers
+def generate_faqs(beta_feedback):
+    """ Generate FAQs for beta testers based on feedback. """
+    prompt = f"Generate FAQs for beta testers based on this feedback: {beta_feedback}"
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
+
+# Feature 23: Product Feature Documentation
+def generate_feature_docs(features):
+    """ Generate product feature documentation. """
+    prompt = f"Generate documentation for the following features: {features}"
+    model = genai.GenerativeModel('gemini-1.5-flash')
+    response = model.generate_content(prompt)
+    return response.text
+
+# Feature 24: Automated Performance Metrics Collection
+def collect_performance_metrics():
+    """ Collect performance metrics (e.g., server performance, app response time). """
+    pass
+
+# Feature 25: Integration with GitHub for Version Control and Issue Tracking
+def create_github_issue(issue_description):
+    """ Create an issue on GitHub for tracking features/bugs. """
+    pass
+
+# Streamlit UI Logic
+url = st.text_input("Enter the competitor/product website URL:", "https://example.com")
+if st.button("Scrape and Analyze"):
+    reviews = scrape_website(url)
+    if reviews:
+        st.write(f"Scraped {len(reviews)} reviews from {url}.")
+        # Visualize feedback trends
+        visualize_feedback_trends(reviews)
+        # Suggest product improvements
+        improvement_suggestions = generate_custom_response("Suggest improvements for product.")
+        st.write("Suggested Product Improvements:")
+        st.write(improvement_suggestions)
+        # Generate beta version suggestions
+        beta_suggestions = generate_custom_response("Generate beta version roadmap.")
+        st.write("Suggested Beta Version Roadmap:")
+        st.write(beta_suggestions)
+
