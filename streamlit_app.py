@@ -171,7 +171,7 @@ if st.button("Generate Overall Advisory"):
 
         if user_query:
             # Generate a custom response based on the user's question or command
-            query_response = generate_custom_response(f"Answer this question: {user_query}")
+            query_response = generate_custom_response(f"Answer this question based on the analysis and suggestions: {user_query}")
             st.write("Advisory Based on Your Query:")
             st.write(query_response)
             st.session_state.user_query = user_query  # Save user query to session state
