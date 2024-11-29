@@ -8,8 +8,7 @@ import seaborn as sns
 import smtplib
 from email.mime.text import MIMEText
 from textblob import TextBlob
-import json
-import os
+import asyncio
 
 # Configure the API key securely from Streamlit's secrets
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -19,17 +18,19 @@ st.title("Ever AI: Product Improvement & Beta Version Creator")
 st.write("Use generative AI, data scraping, and automation to improve your product and create beta suggestions.")
 
 # Feature 1: Web Data Scraping from Multiple Sources
-def scrape_website(url):
+async def scrape_website(url):
     """ Scrape a website to collect data (e.g., reviews, comments). """
     try:
-        response = requests.get(url)
+        response = await asyncio.to_thread(requests.get, url, timeout=10)  # 10 seconds timeout
         soup = BeautifulSoup(response.text, 'html.parser')
         reviews = soup.find_all('p', class_='review-text')  # Modify according to website structure
         review_texts = [review.get_text() for review in reviews]
         return review_texts
+    except requests.exceptions.Timeout:
+        st.error("The request timed out. Please try again later.")
     except Exception as e:
         st.error(f"Error scraping website: {e}")
-        return []
+    return []
 
 # Feature 2: Sentiment Analysis (TextBlob)
 def sentiment_analysis(text):
@@ -39,11 +40,11 @@ def sentiment_analysis(text):
     return sentiment
 
 # Feature 3: Competitor Feature Comparison
-def competitor_feature_comparison(features):
+async def competitor_feature_comparison(features):
     """ Compare product features with competitors. """
     prompt = f"Compare these features with current competitors: {features}"
     model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
+    response = await asyncio.to_thread(model.generate_content, prompt)
     return response.text
 
 # Feature 4: Customer Feedback Aggregation
@@ -62,10 +63,10 @@ def visualize_feedback_trends(feedback_data):
     st.pyplot(plt)
 
 # Feature 6: Customizable Prompt for AI Model
-def generate_custom_response(prompt):
+async def generate_custom_response(prompt):
     """ Generate AI responses based on user prompt. """
     model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
+    response = await asyncio.to_thread(model.generate_content, prompt)
     return response.text
 
 # Feature 7: Automated Email Notifications for Beta Testing Invitations
@@ -100,11 +101,11 @@ def send_slack_message(slack_webhook_url, message):
         st.error(f"Error sending message to Slack: {e}")
 
 # Feature 9: Machine Learning for Feature Prioritization
-def prioritize_features(features):
+async def prioritize_features(features):
     """ Use ML model (e.g., decision tree) to prioritize features. """
     prompt = f"Prioritize these features based on user feedback: {features}"
     model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
+    response = await asyncio.to_thread(model.generate_content, prompt)
     return response.text
 
 # Feature 10: User Profile for Personalized Feedback
@@ -115,11 +116,11 @@ def get_user_profile(user_id):
     return user_data
 
 # Feature 11: User Interface Suggestions via AI
-def ui_suggestions(feedback):
+async def ui_suggestions(feedback):
     """ Generate user interface suggestions based on feedback. """
     prompt = f"Based on the following feedback, suggest UI improvements: {feedback}"
     model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
+    response = await asyncio.to_thread(model.generate_content, prompt)
     return response.text
 
 # Feature 12: Error Log for Monitoring
@@ -129,34 +130,28 @@ def log_error(error_message):
         log_file.write(error_message + "\n")
 
 # Feature 13: Trending Topic Identification
-def identify_trending_topics(feedback):
+async def identify_trending_topics(feedback):
     """ Identify trending topics based on feedback data. """
     prompt = f"Identify trending topics from the following feedback: {feedback}"
     model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
+    response = await asyncio.to_thread(model.generate_content, prompt)
     return response.text
 
 # Feature 14: Version Control and Diff for Beta Releases
-def version_diff(current_version, new_version):
+async def version_diff(current_version, new_version):
     """ Compare differences between versions. """
     prompt = f"Compare these two versions:\nCurrent Version: {current_version}\nNew Version: {new_version}"
     model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
+    response = await asyncio.to_thread(model.generate_content, prompt)
     return response.text
 
 # Feature 15: Automated A/B Testing Suggestions
-def ab_testing_suggestions(current_features, new_features):
+async def ab_testing_suggestions(current_features, new_features):
     """ Generate A/B testing suggestions. """
     prompt = f"Suggest A/B testing strategies for:\nCurrent Features: {current_features}\nNew Features: {new_features}"
     model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
+    response = await asyncio.to_thread(model.generate_content, prompt)
     return response.text
-
-# Feature 16: Database Integration for Storing Scraped Data
-def store_data_in_database(data):
-    """ Store scraped data into a database (e.g., MySQL). """
-    # Assuming a database connection is established
-    pass
 
 # Feature 17: Exporting Data to CSV/Excel
 def export_data_to_csv(data):
@@ -165,72 +160,22 @@ def export_data_to_csv(data):
     df.to_csv("scraped_data.csv", index=False)
     st.download_button("Download Data", data="scraped_data.csv", file_name="scraped_data.csv")
 
-# Feature 18: Product Roadmap Generation
-def generate_roadmap(improvements):
-    """ Generate product roadmap based on suggested improvements. """
-    prompt = f"Create a product roadmap based on these improvements: {improvements}"
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
-    return response.text
-
-# Feature 19: Pricing Model Optimization
-def pricing_model_optimization(pricing_feedback):
-    """ Optimize pricing model based on customer feedback. """
-    prompt = f"Optimize pricing model based on this feedback: {pricing_feedback}"
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
-    return response.text
-
-# Feature 20: Customizable UI Elements (Theme/Colors)
-def customize_ui(theme, colors):
-    """ Customize UI based on user preferences. """
-    st.markdown(f"<style>body {{background-color: {colors['background']}; color: {colors['text']};}}</style>", unsafe_allow_html=True)
-
-# Feature 21: Content Moderation
-def moderate_content(content):
-    """ Moderate user-generated content for inappropriate language. """
-    # Example: Use AI or regex for moderation
-    pass
-
-# Feature 22: AI-Generated FAQs for Beta Testers
-def generate_faqs(beta_feedback):
-    """ Generate FAQs for beta testers based on feedback. """
-    prompt = f"Generate FAQs for beta testers based on this feedback: {beta_feedback}"
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
-    return response.text
-
-# Feature 23: Product Feature Documentation
-def generate_feature_docs(features):
-    """ Generate product feature documentation. """
-    prompt = f"Generate documentation for the following features: {features}"
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
-    return response.text
-
-# Feature 24: Automated Performance Metrics Collection
-def collect_performance_metrics():
-    """ Collect performance metrics (e.g., server performance, app response time). """
-    pass
-
-# Feature 25: Integration with GitHub for Version Control and Issue Tracking
-def create_github_issue(issue_description):
-    """ Create an issue on GitHub for tracking features/bugs. """
-    pass
-
 # Streamlit UI Logic
 url = st.text_input("Enter the competitor/product website URL:", "https://example.com")
 if st.button("Scrape and Analyze"):
-    reviews = scrape_website(url)
+    # Asynchronously scrape website and perform analysis
+    reviews = asyncio.run(scrape_website(url))
     if reviews:
         st.write(f"Scraped {len(reviews)} reviews from {url}.")
         # Visualize feedback trends
         visualize_feedback_trends(reviews)
+        
         # Suggest product improvements
-        improvement_suggestions = generate_custom_response("Suggest improvements for product.")
+        improvement_suggestions = asyncio.run(generate_custom_response("Suggest improvements for product."))
         st.write("Suggested Product Improvements:")
         st.write(improvement_suggestions)
+        
         # Generate beta version suggestions
-        beta_suggestions = generate_custom_response("Generate beta version roadmap.")
+        beta_suggestions = asyncio.run(generate_custom_response("Generate beta version roadmap."))
         st.write("Suggested Beta Version Roadmap:")
         st.write(beta_suggestions)
