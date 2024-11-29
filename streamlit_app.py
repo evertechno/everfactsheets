@@ -2,7 +2,6 @@ import streamlit as st
 import google.generativeai as genai
 import requests
 from bs4 import BeautifulSoup
-import openai
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -235,4 +234,3 @@ if st.button("Scrape and Analyze"):
         beta_suggestions = generate_custom_response("Generate beta version roadmap.")
         st.write("Suggested Beta Version Roadmap:")
         st.write(beta_suggestions)
-
