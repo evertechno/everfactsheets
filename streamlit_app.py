@@ -116,11 +116,9 @@ url_input = st.text_input("Enter the competitor/product website URL (Leave blank
 # Use default URL if no input is provided
 url = url_input if url_input else default_url
 
-# Initialize session state for text data and user query
+# Initialize session state for text data
 if "text_data" not in st.session_state:
     st.session_state.text_data = None
-if "user_query" not in st.session_state:
-    st.session_state.user_query = ""
 
 # Button to trigger scraping and analysis
 if st.button("Analyze and Suggest Improvements"):
@@ -156,24 +154,13 @@ if st.button("Analyze and Suggest Improvements"):
         st.write("Suggested Beta Version Roadmap:")
         st.write(beta_roadmap)
 
-# Optional: Add an overall advisory and improvement prompt
+# Button to generate overall summary
 if st.button("Generate Overall Advisory"):
-    # Check if text_data exists
     if st.session_state.text_data:
         # Summarize the analysis
         summary_prompt = f"Please summarize the analysis of the following product data: {st.session_state.text_data[:500]}"
         summary = generate_custom_response(summary_prompt)
         st.write("Summary of Analysis:")
         st.write(summary)
-
-        # Allow user to ask specific questions/commands about the advisory
-        user_query = st.text_input("Ask a specific question or provide a command related to the advisory (e.g., 'How to improve product UX?')", st.session_state.user_query or "")
-
-        if user_query:
-            # Generate a custom response based on the user's question or command
-            query_response = generate_custom_response(f"Answer this question based on the analysis and suggestions: {user_query}")
-            st.write("Advisory Based on Your Query:")
-            st.write(query_response)
-            st.session_state.user_query = user_query  # Save user query to session state
     else:
         st.error("No data available to generate advisory. Please check the website URL or try again.")
