@@ -116,46 +116,50 @@ url_input = st.text_input("Enter the competitor/product website URL (Leave blank
 # Use default URL if no input is provided
 url = url_input if url_input else default_url
 
+# Initialize session state for text data
+if "text_data" not in st.session_state:
+    st.session_state.text_data = None
+
 # Button to trigger scraping and analysis
 if st.button("Analyze and Suggest Improvements"):
     # Scrape website
-    text_data = scrape_website(url)
+    st.session_state.text_data = scrape_website(url)
     
-    if text_data:
+    if st.session_state.text_data:
         # Show the basic website data
         st.write(f"Scraped content from {url}.")
         
         # Show first few characters of the scraped text
         st.write("Scraped Text (First 500 characters):")
-        st.write(text_data[:500])
+        st.write(st.session_state.text_data[:500])
         
         # Word Frequency Analysis
-        analyze_word_frequency(text_data)
+        analyze_word_frequency(st.session_state.text_data)
         
         # Sentiment Analysis
-        sentiment = analyze_sentiment(text_data)
+        sentiment = analyze_sentiment(st.session_state.text_data)
         st.write(f"Sentiment Analysis: Polarity = {sentiment.polarity}, Subjectivity = {sentiment.subjectivity}")
         
         # Extract Keywords
-        keywords = extract_keywords(text_data)
+        keywords = extract_keywords(st.session_state.text_data)
         st.write("Top 5 Keywords:")
         st.write(keywords)
         
         # Generate Smart Product Suggestion
-        smart_suggestion = generate_smart_product_suggestion(text_data, keywords, sentiment)
+        smart_suggestion = generate_smart_product_suggestion(st.session_state.text_data, keywords, sentiment)
         st.write(f"Smart Product Suggestion: {smart_suggestion}")
         
         # Generate a detailed Beta Version Roadmap based on scraped data
-        beta_roadmap = generate_beta_roadmap(text_data)
+        beta_roadmap = generate_beta_roadmap(st.session_state.text_data)
         st.write("Suggested Beta Version Roadmap:")
         st.write(beta_roadmap)
 
 # Optional: Add an overall advisory and improvement prompt
 if st.button("Generate Overall Advisory"):
-    # Ensure that text_data is not None before proceeding
-    if text_data:
+    # Check if text_data exists
+    if st.session_state.text_data:
         # Summarize the analysis
-        summary_prompt = f"Please summarize the analysis of the following product data: {text_data[:500]}"
+        summary_prompt = f"Please summarize the analysis of the following product data: {st.session_state.text_data[:500]}"
         summary = generate_custom_response(summary_prompt)
         st.write("Summary of Analysis:")
         st.write(summary)
