@@ -27,7 +27,7 @@ def scrape_website(url):
         response = requests.get(url, timeout=10)  # Timeout after 10 seconds
         if response.status_code != 200:
             st.error(f"Error: Unable to fetch the page. Status code: {response.status_code}")
-            return "", []
+            return None
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
@@ -39,7 +39,7 @@ def scrape_website(url):
         st.error("The request timed out. Please try again later.")
     except Exception as e:
         st.error(f"Error scraping website: {e}")
-    return "", []
+    return None
 
 # Feature 2: Visualize Basic Data Insights (Word Frequency Analysis)
 def analyze_word_frequency(text_data):
@@ -152,17 +152,21 @@ if st.button("Analyze and Suggest Improvements"):
 
 # Optional: Add an overall advisory and improvement prompt
 if st.button("Generate Overall Advisory"):
-    # Summarize the analysis
-    summary_prompt = f"Please summarize the analysis of the following product data: {text_data[:500]}"
-    summary = generate_custom_response(summary_prompt)
-    st.write("Summary of Analysis:")
-    st.write(summary)
+    # Ensure that text_data is not None before proceeding
+    if text_data:
+        # Summarize the analysis
+        summary_prompt = f"Please summarize the analysis of the following product data: {text_data[:500]}"
+        summary = generate_custom_response(summary_prompt)
+        st.write("Summary of Analysis:")
+        st.write(summary)
 
-    # Allow user to ask specific questions/commands about the advisory
-    user_query = st.text_input("Ask a specific question or provide a command related to the advisory (e.g., 'How to improve product UX?')")
+        # Allow user to ask specific questions/commands about the advisory
+        user_query = st.text_input("Ask a specific question or provide a command related to the advisory (e.g., 'How to improve product UX?')")
 
-    if user_query:
-        # Generate a custom response based on the user's question or command
-        query_response = generate_custom_response(f"Answer this question: {user_query}")
-        st.write("Advisory Based on Your Query:")
-        st.write(query_response)
+        if user_query:
+            # Generate a custom response based on the user's question or command
+            query_response = generate_custom_response(f"Answer this question: {user_query}")
+            st.write("Advisory Based on Your Query:")
+            st.write(query_response)
+    else:
+        st.error("No data available to generate advisory. Please check the website URL or try again.")
