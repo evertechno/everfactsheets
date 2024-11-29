@@ -1,13 +1,11 @@
 import streamlit as st
 import requests
 from bs4 import BeautifulSoup
-import os
-from google.generativeai import genai
+import google.generativeai as genai
 import matplotlib.pyplot as plt
-import seaborn as sns
-import pandas as pd
+from wordcloud import WordCloud
 
-# Configure the genai API key securely from Streamlit's secrets
+# Configure the Gemini API key securely from Streamlit's secrets
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Streamlit App UI
@@ -22,7 +20,7 @@ def scrape_website(url):
         response = requests.get(url, timeout=10)  # Timeout after 10 seconds
         if response.status_code != 200:
             st.error(f"Error: Unable to fetch the page. Status code: {response.status_code}")
-            return {}, [], []
+            return "", [], []
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
@@ -55,7 +53,6 @@ def visualize_data_analysis(text_data):
         return
     
     # Create a word cloud to visualize the content of the scraped text
-    from wordcloud import WordCloud
     wordcloud = WordCloud(width=800, height=400, background_color='white').generate(text_data)
 
     st.image(wordcloud.to_array(), caption="Word Cloud of Scraped Text")
@@ -64,7 +61,7 @@ def visualize_data_analysis(text_data):
 def generate_custom_response(prompt):
     """ Generate AI responses based on user prompt (e.g., product improvement). """
     st.write("Generating AI response for improvements...")
-    model = genai.GenerativeModel('genai-1.5-flash')
+    model = genai.GenerativeModel('gemini-1.5-flash')
     response = model.generate_content(prompt)
     return response.text
 
