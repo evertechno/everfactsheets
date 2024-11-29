@@ -17,6 +17,9 @@ genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 st.title("Ever AI: Product Improvement & Beta Version Creator")
 st.write("Use generative AI, data scraping, and automation to improve your product and create beta suggestions.")
 
+# Default URL to analyze if no input is given
+default_url = "https://example.com"  # Replace this with a real URL or a placeholder for automatic scraping
+
 # Feature 1: Scrape Website Data (Text)
 def scrape_website(url):
     try:
@@ -107,10 +110,14 @@ def generate_smart_product_suggestion(text_data, keywords, sentiment):
     return suggestion
 
 # Streamlit UI Logic
-url = st.text_input("Enter the competitor/product website URL:", "https://example.com")
+# Option to use default website or input a custom URL
+url_input = st.text_input("Enter the competitor/product website URL (Leave blank for default URL):", "")
+
+# Use default URL if no input is provided
+url = url_input if url_input else default_url
 
 # Button to trigger scraping and analysis
-if st.button("Scrape and Analyze"):
+if st.button("Analyze and Suggest Improvements"):
     # Scrape website
     text_data = scrape_website(url)
     
