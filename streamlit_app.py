@@ -152,7 +152,17 @@ if st.button("Analyze and Suggest Improvements"):
 
 # Optional: Add an overall advisory and improvement prompt
 if st.button("Generate Overall Advisory"):
-    overall_advisory_prompt = "Based on the analysis of the current market trends and user feedback, what should be the key focus areas for improving the product?"
-    overall_advisory = generate_custom_response(overall_advisory_prompt)
-    st.write("Overall Product Improvement Advisory:")
-    st.write(overall_advisory)
+    # Summarize the analysis
+    summary_prompt = f"Please summarize the analysis of the following product data: {text_data[:500]}"
+    summary = generate_custom_response(summary_prompt)
+    st.write("Summary of Analysis:")
+    st.write(summary)
+
+    # Allow user to ask specific questions/commands about the advisory
+    user_query = st.text_input("Ask a specific question or provide a command related to the advisory (e.g., 'How to improve product UX?')")
+
+    if user_query:
+        # Generate a custom response based on the user's question or command
+        query_response = generate_custom_response(f"Answer this question: {user_query}")
+        st.write("Advisory Based on Your Query:")
+        st.write(query_response)
