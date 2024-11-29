@@ -2,13 +2,13 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 import os
-from google.generativeai import gemini
+from google.generativeai import genai
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pandas as pd
 
-# Configure the Gemini API key securely from Streamlit's secrets
-gemini.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+# Configure the genai API key securely from Streamlit's secrets
+genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
 
 # Streamlit App UI
 st.title("Ever AI: Product Improvement & Beta Version Creator")
@@ -64,7 +64,7 @@ def visualize_data_analysis(text_data):
 def generate_custom_response(prompt):
     """ Generate AI responses based on user prompt (e.g., product improvement). """
     st.write("Generating AI response for improvements...")
-    model = gemini.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('genai-1.5-flash')
     response = model.generate_content(prompt)
     return response.text
 
