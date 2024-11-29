@@ -119,6 +119,8 @@ url = url_input if url_input else default_url
 # Initialize session state for text data
 if "text_data" not in st.session_state:
     st.session_state.text_data = None
+if "user_query" not in st.session_state:
+    st.session_state.user_query = None
 
 # Button to trigger scraping and analysis
 if st.button("Analyze and Suggest Improvements"):
@@ -165,12 +167,13 @@ if st.button("Generate Overall Advisory"):
         st.write(summary)
 
         # Allow user to ask specific questions/commands about the advisory
-        user_query = st.text_input("Ask a specific question or provide a command related to the advisory (e.g., 'How to improve product UX?')")
+        user_query = st.text_input("Ask a specific question or provide a command related to the advisory (e.g., 'How to improve product UX?')", st.session_state.user_query or "")
 
         if user_query:
             # Generate a custom response based on the user's question or command
             query_response = generate_custom_response(f"Answer this question: {user_query}")
             st.write("Advisory Based on Your Query:")
             st.write(query_response)
+            st.session_state.user_query = user_query  # Save user query to session state
     else:
         st.error("No data available to generate advisory. Please check the website URL or try again.")
