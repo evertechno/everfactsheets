@@ -2,3 +2,4 @@ streamlit
 google-generativeai 
 fpdf 
 python-docx
+bs4
