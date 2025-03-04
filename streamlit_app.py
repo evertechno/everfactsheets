@@ -13,14 +13,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.decomposition import LatentDirichletAllocation
 from sklearn.metrics.pairwise import cosine_similarity
 from textstat.textstat import textstatistics
-import spacy
-import re
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import LabelEncoder
 from sklearn.pipeline import make_pipeline
-
-# Load NLP model for Named Entity Recognition (NER)
-nlp = spacy.load("en_core_web_sm")
 
 # Configure the Gemini API key securely from Streamlit's secrets
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -39,7 +34,7 @@ def scrape_website(url):
         response = requests.get(url, timeout=10)  # Timeout after 10 seconds
         if response.status_code != 200:
             st.error(f"Error: Unable to fetch the page. Status code: {response.status_code}")
-            return None
+            return None, None, None
 
         soup = BeautifulSoup(response.text, 'html.parser')
 
@@ -130,17 +125,7 @@ def readability_analysis(text_data):
     readability_score = textstatistics().flesch_kincaid_grade(text_data)
     return f"Readability (Flesch-Kincaid Grade Level): {readability_score}"
 
-# Feature 8: Named Entity Recognition (NER)
-def named_entity_recognition(text_data):
-    if not text_data:
-        st.warning("No text data available for Named Entity Recognition.")
-        return
-    
-    doc = nlp(text_data)
-    entities = [(entity.text, entity.label_) for entity in doc.ents]
-    return entities
-
-# Feature 9: Clustering of Product Features
+# Feature 8: Clustering of Product Features
 def cluster_product_features(keywords):
     if not keywords:
         st.warning("No keywords available for clustering.")
@@ -159,7 +144,7 @@ def cluster_product_features(keywords):
     
     return clusters
 
-# Feature 10: Product Rating Analysis
+# Feature 9: Product Rating Analysis
 def analyze_product_ratings(url):
     try:
         response = requests.get(url)
@@ -171,7 +156,7 @@ def analyze_product_ratings(url):
         st.warning(f"Error analyzing ratings: {e}")
         return None
 
-# Feature 11: Keyword Trend Analysis (Compare multiple URLs)
+# Feature 10: Keyword Trend Analysis (Compare multiple URLs)
 def keyword_trend_analysis(urls):
     all_keywords = []
     for url in urls:
@@ -182,7 +167,7 @@ def keyword_trend_analysis(urls):
     
     return all_keywords
 
-# Feature 12: Text Similarity Comparison
+# Feature 11: Text Similarity Comparison
 def text_similarity_comparison(text1, text2):
     if not text1 or not text2:
         st.warning("Insufficient data to compare text similarity.")
@@ -193,7 +178,7 @@ def text_similarity_comparison(text1, text2):
     similarity_matrix = cosine_similarity(vectors)
     return similarity_matrix[0][1]
 
-# Feature 13: AI-powered Feature Generation
+# Feature 12: AI-powered Feature Generation
 def generate_ai_feature_suggestion(text_data):
     st.write("Generating AI-powered feature suggestions...")
     prompt = f"Based on the following text data, suggest new features for a product: {text_data[:300]}"
@@ -242,11 +227,6 @@ if st.button("Analyze and Suggest Improvements"):
         # Readability Analysis
         readability = readability_analysis(st.session_state.text_data)
         st.write(readability)
-
-        # Named Entity Recognition
-        entities = named_entity_recognition(st.session_state.text_data)
-        st.write("Named Entities:")
-        st.write(entities)
 
         # Clustering Keywords
         clusters = cluster_product_features(keywords)
