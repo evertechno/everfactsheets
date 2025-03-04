@@ -7,8 +7,20 @@ import pandas as pd
 import numpy as np
 from collections import Counter
 import seaborn as sns
+from wordcloud import WordCloud
 from textblob import TextBlob
 from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.metrics.pairwise import cosine_similarity
+from textstat.textstat import textstatistics
+import spacy
+import re
+from sklearn.cluster import KMeans
+from sklearn.preprocessing import LabelEncoder
+from sklearn.pipeline import make_pipeline
+
+# Load NLP model for Named Entity Recognition (NER)
+nlp = spacy.load("en_core_web_sm")
 
 # Configure the Gemini API key securely from Streamlit's secrets
 genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
@@ -34,14 +46,30 @@ def scrape_website(url):
         # Scrape all text content
         text_data = soup.get_text()
 
-        return text_data
+        # Get the number of paragraphs, headings, etc.
+        headings = soup.find_all(['h1', 'h2', 'h3'])
+        paragraphs = soup.find_all('p')
+
+        return text_data, headings, paragraphs
     except requests.exceptions.Timeout:
         st.error("The request timed out. Please try again later.")
     except Exception as e:
         st.error(f"Error scraping website: {e}")
-    return None
+    return None, None, None
 
-# Feature 2: Visualize Basic Data Insights (Word Frequency Analysis)
+# Feature 2: Word Cloud Visualization
+def create_word_cloud(text_data):
+    if not text_data:
+        st.warning("No text data available to visualize.")
+        return
+
+    wordcloud = WordCloud(width=800, height=400, background_color="white").generate(text_data)
+    plt.figure(figsize=(10, 6))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    st.pyplot()
+
+# Feature 3: Visualize Basic Data Insights (Word Frequency Analysis)
 def analyze_word_frequency(text_data):
     if not text_data:
         st.warning("No text data available to visualize.")
@@ -58,12 +86,12 @@ def analyze_word_frequency(text_data):
     plt.title("Most Common Words in Scraped Text")
     st.pyplot()
 
-# Feature 3: Sentiment Analysis
+# Feature 4: Sentiment Analysis
 def analyze_sentiment(text_data):
     sentiment = TextBlob(text_data).sentiment
     return sentiment
 
-# Feature 4: Keyword Extraction (TF-IDF)
+# Feature 5: Keyword Extraction (TF-IDF)
 def extract_keywords(text_data):
     vectorizer = TfidfVectorizer(stop_words='english')
     X = vectorizer.fit_transform([text_data])
@@ -74,46 +102,108 @@ def extract_keywords(text_data):
     keywords = sorted(keywords, key=lambda x: x[1], reverse=True)[:5]
     return keywords
 
-# Feature 5: Generate Custom AI Response (Improvement Suggestion)
-def generate_custom_response(prompt):
-    st.write("Generating AI response for improvements...")
-    model = genai.GenerativeModel('gemini-1.5-flash')
-    response = model.generate_content(prompt)
-    return response.text
+# Feature 6: Topic Modeling (LDA)
+def topic_modeling(text_data):
+    if not text_data:
+        st.warning("No text data available for topic modeling.")
+        return
+    
+    vectorizer = TfidfVectorizer(stop_words='english')
+    X = vectorizer.fit_transform([text_data])
+    
+    lda = LatentDirichletAllocation(n_components=3, random_state=42)
+    lda.fit(X)
+    
+    topics = []
+    for idx, topic in enumerate(lda.components_):
+        topic_words = [vectorizer.get_feature_names_out()[i] for i in topic.argsort()[-10:]]
+        topics.append(f"Topic {idx + 1}: " + ", ".join(topic_words))
+    
+    return topics
 
-# Feature 6: Generate Beta Version Roadmap (based on text data)
-def generate_beta_roadmap(text_data):
-    st.write("Generating Beta Version Roadmap...")
-    prompt = f"Create a detailed beta version roadmap based on the following product data: {text_data[:300]}"
-    roadmap = generate_custom_response(prompt)
-    return roadmap
+# Feature 7: Readability Analysis (Flesch-Kincaid)
+def readability_analysis(text_data):
+    if not text_data:
+        st.warning("No text data available for readability analysis.")
+        return
+    
+    readability_score = textstatistics().flesch_kincaid_grade(text_data)
+    return f"Readability (Flesch-Kincaid Grade Level): {readability_score}"
 
-# Feature 7: Smart Product Improvement Suggestion
-def generate_smart_product_suggestion(text_data, keywords, sentiment):
-    """ Generate smart product suggestions based on the analysis of scraped data. """
-    if sentiment.polarity < 0:
-        suggestion = "There seems to be negative sentiment. Focus on improving customer experience, addressing pain points, and user feedback."
-    else:
-        suggestion = "The sentiment is positive. You should focus on adding new features, enhancing performance, and improving scalability."
+# Feature 8: Named Entity Recognition (NER)
+def named_entity_recognition(text_data):
+    if not text_data:
+        st.warning("No text data available for Named Entity Recognition.")
+        return
     
-    common_keywords = [keyword[0] for keyword in keywords]
+    doc = nlp(text_data)
+    entities = [(entity.text, entity.label_) for entity in doc.ents]
+    return entities
+
+# Feature 9: Clustering of Product Features
+def cluster_product_features(keywords):
+    if not keywords:
+        st.warning("No keywords available for clustering.")
+        return
     
-    if 'usability' in common_keywords or 'interface' in common_keywords:
-        suggestion = "Consider improving the user interface for better accessibility and usability."
-    elif 'performance' in common_keywords or 'speed' in common_keywords:
-        suggestion = "Optimize the product for better performance and responsiveness."
-    elif 'support' in common_keywords or 'help' in common_keywords:
-        suggestion = "Expand your customer support options, such as FAQs, live chat, or in-app assistance."
-    elif 'security' in common_keywords or 'privacy' in common_keywords:
-        suggestion = "Strengthen security features to build user trust, focusing on data privacy and protection."
+    vectorizer = TfidfVectorizer(stop_words='english')
+    X = vectorizer.fit_transform([keyword[0] for keyword in keywords])
     
-    return suggestion
+    kmeans = KMeans(n_clusters=3, random_state=42)
+    kmeans.fit(X)
+    
+    labels = kmeans.labels_
+    clusters = {}
+    for label, keyword in zip(labels, keywords):
+        clusters.setdefault(label, []).append(keyword[0])
+    
+    return clusters
+
+# Feature 10: Product Rating Analysis
+def analyze_product_ratings(url):
+    try:
+        response = requests.get(url)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        ratings = [float(rating.get_text()) for rating in soup.find_all('span', class_='product-rating')]
+        avg_rating = np.mean(ratings) if ratings else None
+        return avg_rating
+    except Exception as e:
+        st.warning(f"Error analyzing ratings: {e}")
+        return None
+
+# Feature 11: Keyword Trend Analysis (Compare multiple URLs)
+def keyword_trend_analysis(urls):
+    all_keywords = []
+    for url in urls:
+        text_data, _, _ = scrape_website(url)
+        if text_data:
+            keywords = extract_keywords(text_data)
+            all_keywords.append([keyword[0] for keyword in keywords])
+    
+    return all_keywords
+
+# Feature 12: Text Similarity Comparison
+def text_similarity_comparison(text1, text2):
+    if not text1 or not text2:
+        st.warning("Insufficient data to compare text similarity.")
+        return
+    
+    vectorizer = TfidfVectorizer(stop_words='english')
+    vectors = vectorizer.fit_transform([text1, text2])
+    similarity_matrix = cosine_similarity(vectors)
+    return similarity_matrix[0][1]
+
+# Feature 13: AI-powered Feature Generation
+def generate_ai_feature_suggestion(text_data):
+    st.write("Generating AI-powered feature suggestions...")
+    prompt = f"Based on the following text data, suggest new features for a product: {text_data[:300]}"
+    feature_suggestion = generate_custom_response(prompt)
+    return feature_suggestion
 
 # Streamlit UI Logic
-# Option to use default website or input a custom URL
 url_input = st.text_input("Enter the competitor/product website URL (Leave blank for default URL):", "")
+competitor_url_input = st.text_input("Enter competitor/product URL for comparison:", "")
 
-# Use default URL if no input is provided
 url = url_input if url_input else default_url
 
 # Initialize session state for text data
@@ -123,36 +213,62 @@ if "text_data" not in st.session_state:
 # Button to trigger scraping and analysis
 if st.button("Analyze and Suggest Improvements"):
     # Scrape website
-    st.session_state.text_data = scrape_website(url)
+    st.session_state.text_data, headings, paragraphs = scrape_website(url)
     
     if st.session_state.text_data:
-        # Show the basic website data
+        # Display content
         st.write(f"Scraped content from {url}.")
-        
-        # Show first few characters of the scraped text
         st.write("Scraped Text (First 500 characters):")
         st.write(st.session_state.text_data[:500])
-        
-        # Word Frequency Analysis
+
+        # Visualizations and Analysis
         analyze_word_frequency(st.session_state.text_data)
-        
+        create_word_cloud(st.session_state.text_data)
+
         # Sentiment Analysis
         sentiment = analyze_sentiment(st.session_state.text_data)
         st.write(f"Sentiment Analysis: Polarity = {sentiment.polarity}, Subjectivity = {sentiment.subjectivity}")
-        
+
         # Extract Keywords
         keywords = extract_keywords(st.session_state.text_data)
         st.write("Top 5 Keywords:")
         st.write(keywords)
-        
-        # Generate Smart Product Suggestion
-        smart_suggestion = generate_smart_product_suggestion(st.session_state.text_data, keywords, sentiment)
-        st.write(f"Smart Product Suggestion: {smart_suggestion}")
-        
-        # Generate a detailed Beta Version Roadmap based on scraped data
-        beta_roadmap = generate_beta_roadmap(st.session_state.text_data)
-        st.write("Suggested Beta Version Roadmap:")
-        st.write(beta_roadmap)
+
+        # Topic Modeling
+        topics = topic_modeling(st.session_state.text_data)
+        st.write("Identified Topics:")
+        st.write(topics)
+
+        # Readability Analysis
+        readability = readability_analysis(st.session_state.text_data)
+        st.write(readability)
+
+        # Named Entity Recognition
+        entities = named_entity_recognition(st.session_state.text_data)
+        st.write("Named Entities:")
+        st.write(entities)
+
+        # Clustering Keywords
+        clusters = cluster_product_features(keywords)
+        st.write("Keyword Clusters:")
+        st.write(clusters)
+
+        # Product Rating Analysis
+        avg_rating = analyze_product_ratings(url)
+        if avg_rating:
+            st.write(f"Average Product Rating: {avg_rating}")
+
+        # AI Feature Suggestion
+        ai_feature = generate_ai_feature_suggestion(st.session_state.text_data)
+        st.write("Suggested New Feature:")
+        st.write(ai_feature)
+
+# Compare with competitor data if URL is provided
+if competitor_url_input:
+    competitor_text_data, _, _ = scrape_website(competitor_url_input)
+    if competitor_text_data:
+        similarity = text_similarity_comparison(st.session_state.text_data, competitor_text_data)
+        st.write(f"Text Similarity with Competitor: {similarity}")
 
 # Button to generate overall summary
 if st.button("Generate Overall Advisory"):
