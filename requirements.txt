@@ -7,3 +7,4 @@ textblob
 wordcloud
 scikit-learn
 seaborn
+textstat
